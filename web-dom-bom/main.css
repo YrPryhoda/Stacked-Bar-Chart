@@ -1,0 +1,79 @@
+:root {
+    --white: #fff;
+    --grey: #eee;
+    --black: #000;
+}
+
+body {
+    margin: 0;
+}
+
+.container {
+    box-sizing: border-box;
+    padding-left: 300px;
+    padding-top: 80px;
+}
+
+.graph {
+    box-sizing: border-box;
+    height: 660px;
+    width: 1020px;
+    overflow: visible;
+    background-color: var(--black);
+}
+
+.graph__header {
+    fill: var(--white);
+    font-size: 16px;
+    font-width: 600;
+    text-anchor: middle;
+}
+
+.graph__text {
+    fill: var(--white);
+    text-anchor: start;
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.graph__details {
+    fill: var(--white);
+    width: 190px;
+    height: 200px;
+}
+
+.details__text {
+    font-size: 12px;
+    fill: var(--black);
+}
+
+.grid {
+    stroke: var(--grey);
+    stroke-dasharray: 0;
+    stroke-width: 2;
+}
+
+.grid-line {
+    opacity: 70%;
+    stroke-width: 2;
+    stroke: #7e91e3;
+}
+
+.grid-dashed {
+    stroke-dasharray: 3 3;
+    stroke-width: 3;
+    stroke: var(--black);
+}
+
+.grid-bg {
+    stroke-width: 1;
+    stroke: var(--grey);
+}
+
+.graph__labels_y {
+    text-anchor: middle;
+}
+
+.graph__labels_x {
+    text-anchor: end;
+}
