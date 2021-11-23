@@ -94,7 +94,9 @@ const evaluatePosition = (pos) => {
 const renderCitiesBlock = () => {
     const cities = new Set();
     data.forEach(form => cities.add(form[1]));
-    Array.from(cities).forEach(city => {
+    Array.from(cities)
+        .sort((a,b) => a.localeCompare(b))
+        .forEach(city => {
         const li = createHTMLElement('li', CITIES_BLOCK)
         const checkbox = createHTMLElement('input', li, {
             type: 'checkbox',
