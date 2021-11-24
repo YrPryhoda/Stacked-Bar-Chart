@@ -26,7 +26,7 @@ const createHTMLElement = (tag, parentNode, attrs = {}) => {
 }
 
 const getChartTitle = (val) => `Середні зарплати ${val} розробників в Україні за опитуванням DOU червень-липень 2020`;
-const svgBarChart = createSVGElement('svg', CONTAINER_BLOCK, {class: 'graph'})
+const svgBarChart = createSVGElement('svg', CONTAINER_BLOCK, {class: 'graph'});
 const svgChartCoords = svgBarChart.getBoundingClientRect();
 const header = createSVGElement('text', svgBarChart, {
         class: "graph__header",
@@ -53,7 +53,7 @@ for (let i = CHART_Y_STEP, j = 100; i <= svgChartCoords.height - CHART_Y_STEP, j
 
 for (let i = CHART_X_STEP, j = 0; i <= svgChartCoords.width - CHART_X_STEP, j <= 10; i += CHART_X_STEP, j++) {
     createSVGElement('text', svgBarChart, {
-        x: j ? i + 30 : i,
+        x: j ? i + 30 : i - 10,
         y: svgChartCoords.height - CHART_Y_STEP + CHART_X_STEP / 4,
         class: 'grid-bg',
         id: j,
@@ -95,19 +95,19 @@ const renderCitiesBlock = () => {
     const cities = new Set();
     data.forEach(form => cities.add(form[1]));
     Array.from(cities)
-        .sort((a,b) => a.localeCompare(b))
+        .sort((a, b) => a.localeCompare(b))
         .forEach(city => {
-        const li = createHTMLElement('li', CITIES_BLOCK)
-        const checkbox = createHTMLElement('input', li, {
-            type: 'checkbox',
-            checked: true,
-            className: 'cities__list',
-            value: city
-        });
-        createHTMLElement('label', li, {textContent: city})
+            const li = createHTMLElement('li', CITIES_BLOCK)
+            const checkbox = createHTMLElement('input', li, {
+                type: 'checkbox',
+                checked: true,
+                className: 'cities__list',
+                value: city
+            });
 
-        checkbox.addEventListener('change', () => render());
-    })
+            createHTMLElement('label', li, {textContent: city})
+            checkbox.addEventListener('change', () => render());
+        })
 
     return document.querySelectorAll('.cities__list');
 }
@@ -213,12 +213,13 @@ const renderChartInfoOnHover = (parentCordX, parentCordY, rectWidth, groupInfo) 
         class: 'grid-dashed'
     })
     const group = createSVGElement('g', svgBarChart, {id: 'details', class: 'graph__details'})
-    const startX = CHART_X_STEP + parentCordX + rectWidth / 2;
+    const startX = parentCordX + rectWidth / 2;
     createSVGElement('rect', group, {
         x: startX,
         y: parentCordY,
         width: 140,
         height: 150,
+        class: 'graph__details-border'
     });
 
     renderInfoText(`Min: ${groupInfo.min}$`, startX + 5, parentCordY + ROW_STEP);
@@ -259,9 +260,9 @@ const createChartColumn = (data, positions, colXStart) => {
 
 const renderColumnElement = (currentGroup, colFormsCount, x, y, height, color) => {
     const groupInfo = getChartDescription(currentGroup);
-    const group = createSVGElement('g', svgBarChart);
+    const group = createSVGElement('g', chartBlock);
     const rect = createSVGElement('rect', group, {
-        x: CHART_X_STEP + x,
+        x: x,
         y: CHART_Y_STEP + y - 1,
         width: CHART_X_STEP - 15,
         height: height,
@@ -275,7 +276,7 @@ const renderColumnElement = (currentGroup, colFormsCount, x, y, height, color) =
             class: 'graph__text'
         }, `${groupInfo.mean}$`)
         const textCoords = text.getBoundingClientRect()
-        const textCenter = CHART_X_STEP + x + (rectCoords.width - textCoords.width) / 2;
+        const textCenter = x + (rectCoords.width - textCoords.width) / 2;
         text.setAttribute('x', textCenter)
     }
 
@@ -321,8 +322,8 @@ const renderChartPositions = (positions) => {
 window.addEventListener('load', () => render())
 
 SELECTOR.addEventListener('change', (e) => {
-    render()
-    header.textContent = getChartTitle(e.target.value)
+    render();
+    header.textContent = getChartTitle(e.target.value);
 })
 
 SELECT_ALL.addEventListener('change', e => {
@@ -332,13 +333,25 @@ SELECT_ALL.addEventListener('change', e => {
     render();
 })
 
+CITIES_BLOCK.addEventListener('change', (e) => {
+    const isChecked = Array.from(lists).every(el => el.checked)
+    SELECT_ALL.checked = isChecked;
+})
+
+const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'})
 const render = () => {
+    chartBlock.querySelectorAll('g').forEach(el => el.remove());
     const cities = getSelectedCities();
     const {result, positions} = getDataForChart(SELECTOR.value, cities);
     const chartData = Object.entries(result);
     renderChartPositions(positions)
 
-    for (let i = 0, j = 4; i < chartData.length; i++, j += CHART_X_STEP) {
-        createChartColumn(chartData[i][1], positions, j)
+    for (let i = 0; i < chartData.length; i++) {
+        const colNUmber = document.getElementById(chartData[i][0]);
+        const startX = chartData[i][0] === '0' ?
+            +colNUmber.getAttribute('x') + 15 :
+            colNUmber.getAttribute('x') - 25;
+
+        createChartColumn(chartData[i][1], positions, startX)
     }
 }
