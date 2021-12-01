@@ -1,7 +1,7 @@
 :root {
     --white: #fff;
     --grey: #eee;
-    --black: #000;
+    --black: #001f2e;
 }
 
 body {
@@ -17,15 +17,14 @@ body {
 .graph {
     box-sizing: border-box;
     height: 660px;
-    width: 1020px;
+    width: 1000px;
     overflow: visible;
     background-color: var(--black);
 }
 
 .graph__header {
     fill: var(--white);
-    font-size: 16px;
-    font-width: 600;
+    font-size: 12px;
     text-anchor: middle;
 }
 
@@ -33,7 +32,7 @@ body {
     fill: var(--white);
     text-anchor: start;
     font-weight: 600;
-    font-size: 12px;
+    font-size: 10px;
 }
 
 .graph__details {
@@ -61,7 +60,7 @@ body {
 .grid-line {
     opacity: 70%;
     stroke-width: 2;
-    stroke: #7e91e3;
+    stroke: #223c49;
 }
 
 .grid-dashed {
@@ -72,6 +71,9 @@ body {
 
 .grid-bg {
     stroke-width: 1;
+    font-family: serif;
+    font-weight: 100;
+    font-size: 12px;
     stroke: var(--grey);
 }
 

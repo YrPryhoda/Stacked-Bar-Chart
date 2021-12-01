@@ -4,9 +4,10 @@ const CONTAINER_BLOCK = document.getElementById('container');
 const CITIES_BLOCK = document.getElementById('cities');
 const SELECT_ALL = document.getElementById('select-all');
 const SELECTOR = document.getElementById('selector');
-const COLORS = ['#c516c5', '#6565dc', '#07cae1', '#1d277c', '#ecab04'];
-const CHART_Y_STEP = 70;
-const CHART_X_STEP = 80;
+const COLORS = ['#9469a4', '#2391cb', '#1accd2', '#175785', '#e2bb17'];
+const CHART_Y_STEP = 60;
+const CHART_X_STEP = 45;
+const PADDING = 10;
 const MIN_BLOCK_HEIGHT = 10;
 CONTAINER_BLOCK.classList.add('container')
 
@@ -31,7 +32,7 @@ const svgChartCoords = svgBarChart.getBoundingClientRect();
 const header = createSVGElement('text', svgBarChart, {
         class: "graph__header",
         x: svgChartCoords.width / 2,
-        y: CHART_X_STEP / 2
+        y: CHART_Y_STEP / 2
     },
     getChartTitle(SELECTOR.value))
 
@@ -45,33 +46,33 @@ for (let i = CHART_Y_STEP, j = 100; i <= svgChartCoords.height - CHART_Y_STEP, j
     })
 
     createSVGElement('text', svgBarChart, {
-        x: CHART_X_STEP - CHART_X_STEP / 2,
+        x: 20,
         y: i,
-        class: 'grid-bg'
+        class: 'graph__text'
     }, j.toString())
 }
 
-for (let i = CHART_X_STEP, j = 0; i <= svgChartCoords.width - CHART_X_STEP, j <= 10; i += CHART_X_STEP, j++) {
+for (let i = CHART_X_STEP + 5, j = 0; i <= svgChartCoords.width - CHART_X_STEP, j <= 10; i += 82, j++) {
     createSVGElement('text', svgBarChart, {
-        x: j ? i + 30 : i - 10,
-        y: svgChartCoords.height - CHART_Y_STEP + CHART_X_STEP / 4,
-        class: 'grid-bg',
+        x: j > 0 ? i + 31 : i,
+        y: svgChartCoords.height - CHART_Y_STEP + PADDING,
+        class: 'graph__text',
         id: j,
     }, !j ? 'less than a year' : j)
 }
 
 const axisX = createSVGElement('line', svgBarChart, {
     x1: CHART_X_STEP,
-    x2: svgChartCoords.width - CHART_X_STEP + CHART_X_STEP / 4,
-    y1: svgChartCoords.height - CHART_Y_STEP,
-    y2: svgChartCoords.height - CHART_Y_STEP,
+    x2: svgChartCoords.width - CHART_X_STEP,
+    y1: svgChartCoords.height - CHART_Y_STEP - PADDING,
+    y2: svgChartCoords.height - CHART_Y_STEP - PADDING,
     class: 'grid'
 })
 const axisY = createSVGElement('line', svgBarChart, {
     x1: CHART_X_STEP,
     x2: CHART_X_STEP,
     y1: CHART_Y_STEP,
-    y2: svgChartCoords.height - CHART_Y_STEP,
+    y2: svgChartCoords.height - CHART_Y_STEP - PADDING,
     class: 'grid'
 })
 
@@ -236,7 +237,7 @@ const renderChartInfoOnHover = (parentCordX, parentCordY, rectWidth, groupInfo) 
 }
 
 const createChartColumn = (data, positions, colXStart) => {
-    const colHeight = svgChartCoords.height - 2 * CHART_Y_STEP;
+    const colHeight = svgChartCoords.height - 2 * CHART_Y_STEP - PADDING;
     const colForms = data.length;
     let colYStart = 0;
 
@@ -265,9 +266,9 @@ const renderColumnElement = (currentGroup, colFormsCount, x, y, height, color) =
     const rect = createSVGElement('rect', group, {
         x: x,
         y: CHART_Y_STEP + y - 1,
-        width: CHART_X_STEP - 15,
+        width: 56,
         height: height,
-        fill: color,
+        fill: color
     })
     const rectCoords = rect.getBoundingClientRect();
 
@@ -293,19 +294,20 @@ const renderColumnElement = (currentGroup, colFormsCount, x, y, height, color) =
 
 const createChartPositionLegend = (parentNode, positionInfo, xStart) => {
     const group = createSVGElement('g', parentNode);
-    createSVGElement('rect', group, {
+    const icon = createSVGElement('rect', group, {
         fill: positionInfo[1],
-        y: svgChartCoords.height - CHART_Y_STEP / 2,
+        y: svgChartCoords.height - CHART_Y_STEP + 23,
         x: xStart,
-        width: 25,
-        height: 25,
-        rx: 8,
-        ry: 8,
+        width: 15,
+        height: 15,
+        rx: 4,
+        ry: 4,
     });
 
+    const iconY = icon.getAttribute('y')
     createSVGElement('text', group, {
-        x: xStart + 30,
-        y: svgChartCoords.height - CHART_Y_STEP / 2 + 16,
+        x: xStart + 25,
+        y: +iconY + 12,
         class: 'graph__text'
     }, positionInfo[0]);
 }
@@ -314,8 +316,8 @@ const renderChartPositions = (positions) => {
     const isBlockExists = svgBarChart.querySelector('#positions')
     isBlockExists && isBlockExists.remove();
     const positionsBlock = createSVGElement('g', svgBarChart, {id: 'positions'});
-    const blockWidth = 185;
-    for (let i = 0, j = CHART_X_STEP; i < positions.length; i++, j += blockWidth) {
+    const blockWidth = 175;
+    for (let i = 0, j = CHART_X_STEP + 15; i < positions.length; i++, j += blockWidth) {
         createChartPositionLegend(positionsBlock, positions[i], j)
     }
 }
@@ -381,7 +383,7 @@ const createChartColumns = (formsObj, positions) => {
     for (let i = 0; i < chartData.length; i++) {
         const colNUmber = document.getElementById(chartData[i][0]);
         const startX = chartData[i][0] === '0' ?
-            +colNUmber.getAttribute('x') + 15 :
+            +colNUmber.getAttribute('x') + 10 :
             colNUmber.getAttribute('x') - 25;
         createChartColumn(chartData[i][1], positions, startX)
     }
