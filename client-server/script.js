@@ -1,4 +1,4 @@
-import data from './data.js';
+import ChartService from "./ChartService.js";
 
 const CONTAINER_BLOCK = document.getElementById('container');
 const CITIES_BLOCK = document.getElementById('cities');
@@ -91,61 +91,61 @@ const evaluatePosition = (pos) => {
     }
 }
 
-const renderCitiesBlock = () => {
+const renderCitiesBlock = (data) => {
     const cities = new Set();
-    data.forEach(form => cities.add(form[1]));
+    data.forEach(form => cities.add(form.city));
+
+    Array.from(CITIES_BLOCK.children).forEach(el => el.remove())
     Array.from(cities)
         .sort((a, b) => a.localeCompare(b))
         .forEach(city => {
             const li = createHTMLElement('li', CITIES_BLOCK)
             const checkbox = createHTMLElement('input', li, {
                 type: 'checkbox',
-                checked: true,
                 className: 'cities__list',
                 value: city
             });
 
             createHTMLElement('label', li, {textContent: city})
-            checkbox.addEventListener('change', () => render());
+            checkbox.addEventListener('change', async () => {
+                const arr = [];
+                const list = document.querySelectorAll('.cities__list');
+                list.forEach(city => city.checked && arr.push(city.value))
+                await ChartService.setCities(arr)
+                await render()
+            });
         })
 
     return document.querySelectorAll('.cities__list');
 }
 
-const lists = renderCitiesBlock();
-const getSelectedCities = () => {
-    const selectedCities = [];
-    lists.forEach(el => {
-        if (el.checked) {
-            selectedCities.push(el.value)
-        }
-    });
-
-    if (!selectedCities.length) {
-        lists.forEach(el => selectedCities.push(el.value))
+const getSelectedCities = (initialSelected) => {
+    if (initialSelected && initialSelected.length) {
+        return initialSelected;
     }
+
+    const selectedCities = [];
+    const lists = document.querySelectorAll('.cities__list');
+    lists.forEach(el => {
+        el.checked = false;
+        selectedCities.push(el.value)
+    });
 
     return selectedCities;
 }
 
-const getDataForChart = (value, cities) => {
+const getDataForChart = (data, cities) => {
     const positions = new Set();
-    const result = data
-        .filter(form => {
-            const filteredBy = form[7] || form[8]
-            const city = form[1];
 
-            if (filteredBy === value && cities.includes(city)) {
-                return form
-            }
-        })
+    const result = data
         .reduce((total, current) => {
-            positions.add(current[4])
-            const exp = current[5] < 1 ? 0 : current[5];
-            total[exp] ? total[exp].push(current) : total[exp] = [current];
+            if (cities.includes(current.city)) {
+                positions.add(current.position)
+                const exp = current.experience < 1 ? 0 : current.experience;
+                total[exp] ? total[exp].push(current) : total[exp] = [current];
+            }
             return total;
         }, {})
-
     const positionsVsColors = Array.from(positions)
         .sort((a, b) => evaluatePosition(a) - evaluatePosition(b))
         .reduce((total, current, i) => {
@@ -159,33 +159,33 @@ const getDataForChart = (value, cities) => {
 const getMedian = (group) => {
     const index = group.length / 2;
     if (!Number.isInteger(index)) {
-        return group[Math.floor(index)][2]
+        return group[Math.floor(index)].salary
     }
     const lower = group[index - 1];
     const upper = group[index];
-    return Math.round((lower[2] + upper[2]) / 2);
+    return Math.round((lower.salary + upper.salary) / 2);
 }
 
 const getChartDescription = (group) => {
     const getAverageSalary = (arr) => {
-        const sum = arr.reduce((total, curr) => total + curr[2], 0);
+        const sum = arr.reduce((total, curr) => total + curr.salary, 0);
         return (sum / arr.length).toFixed(0);
     }
 
     const getNQuartile = (quartile, group) => {
         if (group.length <= 1) {
-            return group[0][2]
+            return group[0].salary
         }
         const idx = quartile * (group.length - 1) / 100;
         const intPart = Math.trunc(idx);
         const floatedPart = idx - intPart;
-        const res = group[intPart][2] + floatedPart * (group[intPart + 1][2] - group[intPart][2])
+        const res = group[intPart].salary + floatedPart * (group[intPart + 1].salary - group[intPart].salary)
         return res.toFixed()
     }
 
-    const sortedGroup = group.sort((a, b) => a[2] - b[2]);
-    const min = sortedGroup[0][2];
-    const max = sortedGroup[sortedGroup.length - 1][2];
+    const sortedGroup = group.sort((a, b) => a.salary - b.salary);
+    const min = sortedGroup[0].salary;
+    const max = sortedGroup[sortedGroup.length - 1].salary;
     const mean = getAverageSalary(sortedGroup);
     const median = getMedian(sortedGroup);
     const number = group.length;
@@ -242,7 +242,7 @@ const createChartColumn = (data, positions, colXStart) => {
 
     const group = data
         .reduce((total, current) => {
-            const position = current[4];
+            const position = current.position;
             total[position] ? total[position].push(current) : total[position] = [current]
             return total;
         }, {})
@@ -252,6 +252,7 @@ const createChartColumn = (data, positions, colXStart) => {
         .forEach(([key, data]) => {
             const heightPercentage = 100 * data.length / colForms;
             const chartBlockHeight = colHeight * heightPercentage / 100;
+
             const [, color] = positions.find(el => el[0] === key)
             renderColumnElement(data, colForms, colXStart, colYStart, chartBlockHeight, color);
             colYStart += chartBlockHeight
@@ -319,39 +320,78 @@ const renderChartPositions = (positions) => {
     }
 }
 
-window.addEventListener('load', () => render())
+const setInitialConfig = config => {
+    SELECTOR.value = config.langOrSpec;
+    const list = document.querySelectorAll('.cities__list');
+    if (config.cities) {
+        list.forEach(city => {
+            city.checked = config.cities.includes(city.value)
+        })
+        SELECT_ALL.checked = Array.from(list).every(el => el.checked);
+    } else {
+        SELECT_ALL.checked = false;
+    }
+}
 
-SELECTOR.addEventListener('change', (e) => {
-    render();
+window.addEventListener('load', async () => {
+    await render();
+})
+
+SELECTOR.addEventListener('change', async (e) => {
+    await ChartService.setLangOrSpec(e.target.value);
+    await render();
     header.textContent = getChartTitle(e.target.value);
 })
 
-SELECT_ALL.addEventListener('change', e => {
+SELECT_ALL.addEventListener('change', async e => {
+    const lists = document.querySelectorAll('.cities__list');
+    const cities = [];
     lists.forEach(item => {
+        !!e.target.checked && cities.push(item.value)
         item.checked = !!e.target.checked
     })
-    render();
+    await ChartService.setCities(cities);
+    await render();
 })
 
 CITIES_BLOCK.addEventListener('change', (e) => {
-    const isChecked = Array.from(lists).every(el => el.checked)
-    SELECT_ALL.checked = isChecked;
+    const lists = document.querySelectorAll('.cities__list')
+    SELECT_ALL.checked = Array.from(lists).every(el => el.checked)
 })
 
-const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'})
-const render = () => {
-    chartBlock.querySelectorAll('g').forEach(el => el.remove());
-    const cities = getSelectedCities();
-    const {result, positions} = getDataForChart(SELECTOR.value, cities);
-    const chartData = Object.entries(result);
-    renderChartPositions(positions)
+const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'});
 
+const fetchData = async () => {
+    const config = await ChartService.getChartConfig();
+    const data = await ChartService.loadForms(config.langOrSpec);
+
+    return {data, config}
+}
+
+const showSidebar = (data, config) => {
+    renderCitiesBlock(data)
+    setInitialConfig(config);
+    config.cities = getSelectedCities(config.cities);
+
+    return config.cities
+}
+
+const createChartColumns = (formsObj, positions) => {
+    const chartData = Object.entries(formsObj);
     for (let i = 0; i < chartData.length; i++) {
         const colNUmber = document.getElementById(chartData[i][0]);
         const startX = chartData[i][0] === '0' ?
             +colNUmber.getAttribute('x') + 15 :
             colNUmber.getAttribute('x') - 25;
-
         createChartColumn(chartData[i][1], positions, startX)
     }
+}
+
+const render = async () => {
+    chartBlock.querySelectorAll('g').forEach(el => el.remove());
+    const {data, config} = await fetchData();
+    const selectedCities = showSidebar(data, config);
+    const {result, positions} = getDataForChart(data, selectedCities);
+    renderChartPositions(positions)
+    createChartColumns(result, positions);
 }

@@ -1,4 +1,4 @@
-export default [
+module.exports =  [
     [2,"Ужгород",18000,1,"System Architect",10,10,"Ruby/Rails","",67,"женский","Еще студент","КНУСА",true,"элементарный","свыше 1000 человек","Продуктовая","Adtech, Agriculture, AR/VR"],
     [3,"Харьков",18000,80,"Senior Software Engineer",8,8,"Other","",29,"женский","Высшее","ХНУРЭ",false,"выше среднего","свыше 1000 человек","Аутсорсинговая","Internet of Things, Media, Mobile"],
     [4,"Одесса",17000,-20,"QA Engineer",3,2,"","Manual QA",26,"женский","Высшее","ОНАС",false,"выше среднего","до 50 человек","Стартап","Mobile"],
