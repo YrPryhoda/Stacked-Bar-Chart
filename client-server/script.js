@@ -52,11 +52,7 @@ for (let i = CHART_Y_STEP, j = 100; i <= svgChartCoords.height - CHART_Y_STEP, j
         class: 'grid-line'
     })
 
-    createSVGElement('text', svgBarChart, {
-        x: 20,
-        y: i,
-        class: 'graph__text'
-    }, j.toString())
+    createSVGElement('text', svgBarChart, {x: 20, y: i, class: 'graph__text'}, j.toString())
 }
 
 for (let i = CHART_X_STEP + 5, j = 0; i <= svgChartCoords.width - CHART_X_STEP, j <= 10; i += 82, j++) {
@@ -82,6 +78,7 @@ const axisY = createSVGElement('line', svgBarChart, {
     y2: svgChartCoords.height - CHART_Y_STEP - PADDING,
     class: 'grid'
 })
+const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'});
 
 const evaluatePosition = (pos) => {
     switch (true) {
@@ -131,9 +128,7 @@ const renderCitiesBlock = (data) => {
 }
 
 const getSelectedCities = (initialSelected) => {
-    if (initialSelected && initialSelected.length) {
-        return initialSelected;
-    }
+    if (initialSelected && initialSelected.length) return initialSelected;
 
     const selectedCities = [];
     const lists = document.querySelectorAll('.cities__list');
@@ -208,9 +203,7 @@ const getChartDescription = (group) => {
 
 const renderChartInfoOnHover = (parentCordX, parentCordY, rectWidth, groupInfo) => {
     const ROW_STEP = 14;
-    const renderInfoText = (title, x, y) => createSVGElement('text', group, {
-        x, y, class: 'details__text'
-    }, title);
+    const renderInfoText = (title, x, y) => createSVGElement('text', group, {x, y, class: 'details__text'}, title);
     const renderDashedLine = (offset) => createSVGElement('line', group, {
         x1: startX + 6,
         x2: startX + rectWidth,
@@ -245,9 +238,8 @@ const createChartColumns = (formsObj, positions) => {
     const chartData = Object.entries(formsObj);
     for (let i = 0; i < chartData.length; i++) {
         const colNUmber = document.getElementById(chartData[i][0]);
-        const startX = chartData[i][0] === '0' ?
-            +colNUmber.getAttribute('x') + 10 :
-            colNUmber.getAttribute('x') - 25;
+        const colX = colNUmber.getAttribute('x')
+        const startX = chartData[i][0] === '0' ? +colX + 10 : colX - 25;
         createChartColumn(chartData[i][1], positions, startX)
     }
 }
@@ -291,10 +283,7 @@ const renderColumnElement = (currentGroup, colFormsCount, x, y, height, fill) =>
         text.setAttribute('x', textCenter)
     }
 
-    group.addEventListener('mouseenter', e => {
-        renderChartInfoOnHover(x, e.offsetY, rectCoords.width, groupInfo)
-    })
-
+    group.addEventListener('mouseenter', e => renderChartInfoOnHover(x, e.offsetY, rectCoords.width, groupInfo));
     group.addEventListener('mouseleave', () => {
         const element = CONTAINER_BLOCK.querySelector('#details');
         element.remove()
@@ -365,7 +354,6 @@ const showSidebar = (data, cities, lang) => {
     return getSelectedCities(cities);
 }
 
-const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'});
 const localRender = (state) => {
     const {forms, langOrSpec, cities} = state;
 
