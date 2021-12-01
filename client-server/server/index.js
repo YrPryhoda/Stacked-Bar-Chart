@@ -1,4 +1,5 @@
 const http = require("http");
+const wss = require('./wss');
 const ChartService = require('./chartService');
 const PORT = 3000;
 const host = '127.0.0.1';
@@ -67,6 +68,7 @@ const server = http.createServer((req, res) => {
     }
 });
 
+wss.init(server);
 server.listen(PORT, host, () => {
     console.log(`Server is running on ${host}:${PORT}`)
 });

@@ -1,4 +1,5 @@
 import ChartService from "./ChartService.js";
+import {wsConnection} from "./server/wsService.js";
 
 const CONTAINER_BLOCK = document.getElementById('container');
 const CITIES_BLOCK = document.getElementById('cities');
@@ -8,8 +9,14 @@ const COLORS = ['#9469a4', '#2391cb', '#1accd2', '#175785', '#e2bb17'];
 const CHART_Y_STEP = 60;
 const CHART_X_STEP = 45;
 const PADDING = 10;
-const MIN_BLOCK_HEIGHT = 10;
+const MIN_BLOCK_HEIGHT = 9;
 CONTAINER_BLOCK.classList.add('container')
+
+const state = {
+    forms: [],
+    langOrSpec: SELECTOR.value,
+    cities: []
+}
 
 const createSVGElement = (tag, parentNode, attrs = {}, text = '') => {
     const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -92,6 +99,25 @@ const evaluatePosition = (pos) => {
     }
 }
 
+const createCityItem = (city) => {
+    const li = createHTMLElement('li', CITIES_BLOCK)
+    const checkbox = createHTMLElement('input', li, {
+        type: 'checkbox',
+        className: 'cities__list',
+        value: city
+    });
+    createHTMLElement('label', li, {textContent: city})
+
+    checkbox.addEventListener('change', async () => {
+        const arr = [];
+        const list = document.querySelectorAll('.cities__list');
+        list.forEach(city => city.checked && arr.push(city.value))
+        await ChartService.setCities(arr)
+        state.cities = [...arr];
+        localRender(state)
+    });
+}
+
 const renderCitiesBlock = (data) => {
     const cities = new Set();
     data.forEach(form => cities.add(form.city));
@@ -99,23 +125,7 @@ const renderCitiesBlock = (data) => {
     Array.from(CITIES_BLOCK.children).forEach(el => el.remove())
     Array.from(cities)
         .sort((a, b) => a.localeCompare(b))
-        .forEach(city => {
-            const li = createHTMLElement('li', CITIES_BLOCK)
-            const checkbox = createHTMLElement('input', li, {
-                type: 'checkbox',
-                className: 'cities__list',
-                value: city
-            });
-
-            createHTMLElement('label', li, {textContent: city})
-            checkbox.addEventListener('change', async () => {
-                const arr = [];
-                const list = document.querySelectorAll('.cities__list');
-                list.forEach(city => city.checked && arr.push(city.value))
-                await ChartService.setCities(arr)
-                await render()
-            });
-        })
+        .forEach(city => createCityItem(city))
 
     return document.querySelectorAll('.cities__list');
 }
@@ -137,7 +147,6 @@ const getSelectedCities = (initialSelected) => {
 
 const getDataForChart = (data, cities) => {
     const positions = new Set();
-
     const result = data
         .reduce((total, current) => {
             if (cities.includes(current.city)) {
@@ -147,6 +156,7 @@ const getDataForChart = (data, cities) => {
             }
             return total;
         }, {})
+
     const positionsVsColors = Array.from(positions)
         .sort((a, b) => evaluatePosition(a) - evaluatePosition(b))
         .reduce((total, current, i) => {
@@ -159,12 +169,11 @@ const getDataForChart = (data, cities) => {
 
 const getMedian = (group) => {
     const index = group.length / 2;
-    if (!Number.isInteger(index)) {
-        return group[Math.floor(index)].salary
-    }
-    const lower = group[index - 1];
-    const upper = group[index];
-    return Math.round((lower.salary + upper.salary) / 2);
+    if (!Number.isInteger(index)) return group[Math.floor(index)].salary;
+
+    const lower = group[index - 1].salary;
+    const upper = group[index].salary;
+    return Math.round((lower + upper) / 2);
 }
 
 const getChartDescription = (group) => {
@@ -174,9 +183,8 @@ const getChartDescription = (group) => {
     }
 
     const getNQuartile = (quartile, group) => {
-        if (group.length <= 1) {
-            return group[0].salary
-        }
+        if (group.length <= 1) return group[0].salary;
+
         const idx = quartile * (group.length - 1) / 100;
         const intPart = Math.trunc(idx);
         const floatedPart = idx - intPart;
@@ -195,10 +203,7 @@ const getChartDescription = (group) => {
     const quartile75 = getNQuartile(75, group);
     const quartile90 = getNQuartile(90, group);
 
-    return {
-        min, max, mean, median, number,
-        quartile10, quartile25, quartile75, quartile90
-    }
+    return {min, max, mean, median, number, quartile10, quartile25, quartile75, quartile90}
 }
 
 const renderChartInfoOnHover = (parentCordX, parentCordY, rectWidth, groupInfo) => {
@@ -236,6 +241,17 @@ const renderChartInfoOnHover = (parentCordX, parentCordY, rectWidth, groupInfo) 
     renderInfoText(`Number: ${groupInfo.number}`, startX + 5, parentCordY + 10 * ROW_STEP);
 }
 
+const createChartColumns = (formsObj, positions) => {
+    const chartData = Object.entries(formsObj);
+    for (let i = 0; i < chartData.length; i++) {
+        const colNUmber = document.getElementById(chartData[i][0]);
+        const startX = chartData[i][0] === '0' ?
+            +colNUmber.getAttribute('x') + 10 :
+            colNUmber.getAttribute('x') - 25;
+        createChartColumn(chartData[i][1], positions, startX)
+    }
+}
+
 const createChartColumn = (data, positions, colXStart) => {
     const colHeight = svgChartCoords.height - 2 * CHART_Y_STEP - PADDING;
     const colForms = data.length;
@@ -260,21 +276,14 @@ const createChartColumn = (data, positions, colXStart) => {
         })
 }
 
-const renderColumnElement = (currentGroup, colFormsCount, x, y, height, color) => {
+const renderColumnElement = (currentGroup, colFormsCount, x, y, height, fill) => {
     const groupInfo = getChartDescription(currentGroup);
     const group = createSVGElement('g', chartBlock);
-    const rect = createSVGElement('rect', group, {
-        x: x,
-        y: CHART_Y_STEP + y - 1,
-        width: 56,
-        height: height,
-        fill: color
-    })
+    const rect = createSVGElement('rect', group, {x, y: CHART_Y_STEP + y, width: 56, height, fill})
     const rectCoords = rect.getBoundingClientRect();
-
     if (height >= MIN_BLOCK_HEIGHT) {
         const text = createSVGElement('text', group, {
-            y: y + height / 2 + CHART_Y_STEP + 5,
+            y: y + 2 + height / 2 + CHART_Y_STEP,
             class: 'graph__text'
         }, `${groupInfo.mean}$`)
         const textCoords = text.getBoundingClientRect()
@@ -303,13 +312,8 @@ const createChartPositionLegend = (parentNode, positionInfo, xStart) => {
         rx: 4,
         ry: 4,
     });
-
     const iconY = icon.getAttribute('y')
-    createSVGElement('text', group, {
-        x: xStart + 25,
-        y: +iconY + 12,
-        class: 'graph__text'
-    }, positionInfo[0]);
+    createSVGElement('text', group, {x: xStart + 25, y: +iconY + 12, class: 'graph__text'}, positionInfo[0]);
 }
 
 const renderChartPositions = (positions) => {
@@ -317,31 +321,24 @@ const renderChartPositions = (positions) => {
     isBlockExists && isBlockExists.remove();
     const positionsBlock = createSVGElement('g', svgBarChart, {id: 'positions'});
     const blockWidth = 175;
+
     for (let i = 0, j = CHART_X_STEP + 15; i < positions.length; i++, j += blockWidth) {
         createChartPositionLegend(positionsBlock, positions[i], j)
     }
 }
 
-const setInitialConfig = config => {
-    SELECTOR.value = config.langOrSpec;
+const setInitialConfig = (cities, lang) => {
+    SELECTOR.value = lang;
     const list = document.querySelectorAll('.cities__list');
-    if (config.cities) {
-        list.forEach(city => {
-            city.checked = config.cities.includes(city.value)
-        })
-        SELECT_ALL.checked = Array.from(list).every(el => el.checked);
-    } else {
-        SELECT_ALL.checked = false;
-    }
+    cities && list.forEach(city => city.checked = cities.includes(city.value))
+    SELECT_ALL.checked = Array.from(list).every(el => el.checked);
 }
 
-window.addEventListener('load', async () => {
-    await render();
-})
+window.addEventListener('load', async () => await globalRender())
 
 SELECTOR.addEventListener('change', async (e) => {
     await ChartService.setLangOrSpec(e.target.value);
-    await render();
+    await globalRender();
     header.textContent = getChartTitle(e.target.value);
 })
 
@@ -353,47 +350,54 @@ SELECT_ALL.addEventListener('change', async e => {
         item.checked = !!e.target.checked
     })
     await ChartService.setCities(cities);
-    await render();
+    localRender(state);
 })
 
-CITIES_BLOCK.addEventListener('change', (e) => {
+CITIES_BLOCK.addEventListener('change', () => {
     const lists = document.querySelectorAll('.cities__list')
     SELECT_ALL.checked = Array.from(lists).every(el => el.checked)
 })
 
-const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'});
-
-const fetchData = async () => {
-    const config = await ChartService.getChartConfig();
-    const data = await ChartService.loadForms(config.langOrSpec);
-
-    return {data, config}
-}
-
-const showSidebar = (data, config) => {
+const showSidebar = (data, cities, lang) => {
     renderCitiesBlock(data)
-    setInitialConfig(config);
-    config.cities = getSelectedCities(config.cities);
+    setInitialConfig(cities, lang);
 
-    return config.cities
+    return getSelectedCities(cities);
 }
 
-const createChartColumns = (formsObj, positions) => {
-    const chartData = Object.entries(formsObj);
-    for (let i = 0; i < chartData.length; i++) {
-        const colNUmber = document.getElementById(chartData[i][0]);
-        const startX = chartData[i][0] === '0' ?
-            +colNUmber.getAttribute('x') + 10 :
-            colNUmber.getAttribute('x') - 25;
-        createChartColumn(chartData[i][1], positions, startX)
-    }
-}
+const chartBlock = createSVGElement('g', svgBarChart, {class: 'graph__chart'});
+const localRender = (state) => {
+    const {forms, langOrSpec, cities} = state;
 
-const render = async () => {
     chartBlock.querySelectorAll('g').forEach(el => el.remove());
-    const {data, config} = await fetchData();
-    const selectedCities = showSidebar(data, config);
-    const {result, positions} = getDataForChart(data, selectedCities);
+    const selectedCities = showSidebar(forms, cities, langOrSpec);
+    const {result, positions} = getDataForChart(state.forms, selectedCities);
     renderChartPositions(positions)
     createChartColumns(result, positions);
 }
+
+const globalRender = async () => {
+    const config = await ChartService.getChartConfig();
+    const data = await ChartService.loadForms(config.langOrSpec);
+    state.forms = [...data];
+    state.langOrSpec = config.langOrSpec;
+    state.cities = [...(config.cities || [])];
+    localRender(state)
+}
+
+wsConnection.onmessage = function (message) {
+    const {type, data} = JSON.parse(message.data);
+    switch (type) {
+        case 'langOrSpecSelected':
+            state.forms = [...data.forms];
+            state.langOrSpec = data.lang;
+            localRender(state)
+            break;
+
+        case 'citiesSelected':
+            const cities = JSON.parse(data.cities);
+            state.cities = [...cities];
+            localRender(state);
+            break;
+    }
+};

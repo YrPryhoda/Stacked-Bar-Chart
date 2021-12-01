@@ -34,7 +34,7 @@ class ChartService {
                 method: 'POST',
                 body: value
             })
-            return await response.json();
+            return await response.text();
         } catch (e) {
             console.log(e.message)
         }

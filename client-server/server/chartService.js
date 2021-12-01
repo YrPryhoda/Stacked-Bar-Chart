@@ -1,6 +1,7 @@
 const fs = require("fs");
 const sqlite3 = require('sqlite3').verbose();
 const initData = require('../data');
+const wss = require('./wss');
 
 const createdDbCallback = (err, name) => {
     if (err) return console.error(err.message);
@@ -28,7 +29,13 @@ class ChartService {
         const query = 'SELECT city, salary, position, experience, language, specialization ' +
             'FROM forms ' +
             'WHERE language=? OR specialization=?';
-        formsDB.all(query, langOrSpec, langOrSpec, callback)
+        formsDB.all(query, langOrSpec, langOrSpec, (e, data) => {
+            wss.send({
+                type: 'langOrSpecSelected',
+                data: {forms: data, lang: langOrSpec}
+            })
+            callback(e, data)
+        })
     }
 
     findChartOptions(callback) {
@@ -38,13 +45,22 @@ class ChartService {
 
     setChartLangOrSpec(value, callback) {
         const query = 'UPDATE chartOptions SET langOrSpec=? WHERE id = 1'
-        chartDB.run(query, value, callback);
+        chartDB.run(query, value, (err) => {
+            callback(err)
+        });
     }
 
     setChartCities(value, callback) {
         const citiesStr = value.toString();
         const query = 'UPDATE chartOptions SET cities=? WHERE id = 1'
-        chartDB.run(query, citiesStr, callback);
+        chartDB.run(query, citiesStr, (err) => {
+            wss.send({
+                    type: 'citiesSelected',
+                    data: {cities: value}
+                }
+            )
+            callback(err)
+        });
     }
 
     fillInitialChartConfig() {
