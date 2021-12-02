@@ -14,12 +14,12 @@ const chartDB = new sqlite3.Database('./db/chartOptions.sqlite', (e) => createdD
 class ChartService {
     constructor() {
         this.countFormsRows((err) => {
-            if (err?.message === 'SQLITE_ERROR: no such table: forms') {
+            if (err && err.message === 'SQLITE_ERROR: no such table: forms') {
                 this.readInitialTableConfig(formsDB, './db/db_forms_init.sql', this.fillWithForms)
             }
         })
         this.findChartOptions((err) => {
-            if (err?.message === 'SQLITE_ERROR: no such table: chartOptions') {
+            if (err && err.message === 'SQLITE_ERROR: no such table: chartOptions') {
                 this.readInitialTableConfig(chartDB, './db/db_chart_init.sql', this.fillInitialChartConfig)
             }
         })
